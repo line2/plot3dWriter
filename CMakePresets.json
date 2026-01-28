@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "cmakeMinimumRequired": {
     "major": 3,
     "minor": 20,
@@ -51,12 +51,20 @@
       }
     },
     {
+      "name": "cpack-out",
+      "hidden": true,
+      "cacheVariables": {
+        "CPACK_PACKAGE_DIRECTORY": "${sourceDir}/out/pack/${presetName}"
+      }
+    },
+    {
       "name": "ninja-msvc-release",
       "inherits": [
         "vcpkg",
         "ninja",
         "release",
-        "vs-2022"
+        "vs-2022",
+        "cpack-out"
       ],
       "binaryDir": "${sourceDir}/out/build/msvc/ninja-msvc-release",
       "installDir": "${sourceDir}/out/install/ninja-msvc-release"
@@ -67,7 +75,8 @@
         "vcpkg",
         "ninja",
         "debug",
-        "vs-2022"
+        "vs-2022",
+        "cpack-out"
       ],
       "binaryDir": "${sourceDir}/out/build/msvc/ninja-msvc-debug",
       "installDir": "${sourceDir}/out/install/ninja-msvc-debug"
@@ -78,7 +87,8 @@
         "vcpkg",
         "ninja",
         "release",
-        "msys2-ucrt"
+        "msys2-ucrt",
+        "cpack-out"
       ],
       "binaryDir": "${sourceDir}/out/build/ucrt/ninja-msys2-ucrt-release",
       "installDir": "${sourceDir}/out/install/ninja-msys2-ucrt-release"
@@ -89,7 +99,8 @@
         "vcpkg",
         "ninja",
         "debug",
-        "msys2-ucrt"
+        "msys2-ucrt",
+        "cpack-out"
       ],
       "binaryDir": "${sourceDir}/out/build/ucrt/ninja-msys2-ucrt-debug",
       "installDir": "${sourceDir}/out/install/ninja-msys2-ucrt-debug"
@@ -104,6 +115,7 @@
       "binaryDir": "${sourceDir}/out/build/${presetName}",
       "cacheVariables": {
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+        "CPACK_PACKAGE_DIRECTORY": "${sourceDir}/out/pack/${presetName}",
         "CMAKE_C_COMPILER": "cl.exe",
         "CMAKE_CXX_COMPILER": "cl.exe"
       }
@@ -115,6 +127,22 @@
       "displayName": "Visual Studio Community 2022 Release - amd64 - Debug",
       "configurePreset": "Visual Studio Community 2022 Release - amd64",
       "configuration": "Debug"
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "ninja-msvc-release",
+      "configurePreset": "ninja-msvc-release",
+      "generators": [
+        "ZIP"
+      ]
+    },
+    {
+      "name": "Visual Studio Community 2022 Release - amd64",
+      "configurePreset": "Visual Studio Community 2022 Release - amd64",
+      "generators": [
+        "ZIP"
+      ]
     }
   ]
 }
