@@ -55,7 +55,7 @@ void Plot3dWriter::WriteGrid(vtkDataObject* input, const std::string& fileName, 
     block.z = z.data();
 
     if (plot3d_writer::WriteStructured(fileName, block, opt.coreOptions) != 0) {
-        throw std::runtime_error(::plot3d_get_last_error());
+        throw std::runtime_error(plot3d_writer::GetLastError());
     }
 }
 
@@ -101,6 +101,6 @@ void Plot3dWriter::WriteSolution(vtkDataObject* input, const std::string& fileNa
     // but the API takes the block for dimensions.
     
     if (plot3d_writer::WriteSolution(fileName, block, q.data(), 5, opt.refConditions, opt.coreOptions) != 0) {
-        throw std::runtime_error(::plot3d_get_last_error());
+        throw std::runtime_error(plot3d_writer::GetLastError());
     }
 }

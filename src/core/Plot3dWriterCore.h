@@ -4,32 +4,6 @@
 #include "Plot3dWriterExport.h"
 #include <string>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// C API
-PLOT3D_WRITER_API int plot3d_write_structured(
-    const char* filename,
-    const Plot3dStructuredBlock* block,
-    const Plot3dWriteOptions* options);
-
-PLOT3D_WRITER_API int plot3d_write_solution(
-    const char* filename,
-    const Plot3dStructuredBlock* block,
-    const double* q_data, // Interleaved or planar? Let's decide on planar for 5 variables: rho, rhou, rhov, rhow, E
-    int num_vars,
-    const Plot3dReferenceConditions* ref,
-    const Plot3dWriteOptions* options);
-
-PLOT3D_WRITER_API const char* plot3d_get_last_error();
-PLOT3D_WRITER_API const char* plot3d_writer_version();
-
-#ifdef __cplusplus
-}
-#endif
-
-// C++ API
 namespace plot3d_writer {
 
 struct StructuredBlock {
@@ -63,6 +37,8 @@ PLOT3D_WRITER_API int WriteSolution(
     int num_vars,
     const ReferenceConditions& ref = {},
     const WriteOptions& options = {});
+
+PLOT3D_WRITER_API const std::string& GetLastError();
 
 } // namespace plot3d_writer
 

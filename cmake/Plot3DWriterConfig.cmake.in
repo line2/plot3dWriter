@@ -1,6 +1,9 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-find_dependency(VTK CONFIG REQUIRED)
+set(_ENABLE_VTK @ENABLE_VTK@)
+if(_ENABLE_VTK)
+    find_dependency(VTK CONFIG REQUIRED)
+endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/Plot3DWriterTargets.cmake")

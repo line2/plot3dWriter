@@ -8,49 +8,86 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- Find Dependencies ---
-find_package(VTK CONFIG REQUIRED)
+option(ENABLE_VTK "Enable VTK integration layer" ON)
+if(ENABLE_VTK)
+    find_package(VTK CONFIG REQUIRED)
+endif()
 
-# --- Core DLL ---
+# --- Core DLL (Includes C++ and C API) ---
 add_library(plot3d_writer_dll SHARED
-    src/Plot3dWriterCore.cpp
-    src/Plot3dWriterCore.h
-    src/Plot3dWriterExport.h
+    src/core/Plot3dWriterCore.cpp
+    src/core/Plot3dWriterCore.h
+    src/c_api/Plot3dWriterC.cpp
+    src/c_api/Plot3dWriterC.h
+    src/c_api/Plot3dWriterExport.h
 )
 target_include_directories(plot3d_writer_dll
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/core>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/c_api>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/plot3dwriter>
 )
 target_compile_definitions(plot3d_writer_dll PRIVATE PLOT3D_WRITER_DLL_EXPORTS)
 
 # --- VTK Layer ---
-add_library(plot3d_writer STATIC
-    src/Plot3dWriter.cpp
-    src/Plot3dWriter.h
-)
-target_link_libraries(plot3d_writer PUBLIC plot3d_writer_dll ${VTK_LIBRARIES})
-target_include_directories(plot3d_writer
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/plot3dwriter>
-)
+if(ENABLE_VTK)
+    add_library(plot3d_writer STATIC
+        src/vtk/Plot3dWriter.cpp
+        src/vtk/Plot3dWriter.h
+    )
+    target_link_libraries(plot3d_writer PUBLIC plot3d_writer_dll ${VTK_LIBRARIES})
+    target_include_directories(plot3d_writer
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/vtk>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/plot3dwriter>
+    )
+endif()
 
-# --- Example ---
+# --- Examples ---
 add_executable(core_example example/core_example.cpp)
-target_link_libraries(core_example PRIVATE plot3d_writer)
+target_link_libraries(core_example PRIVATE plot3d_writer_dll)
+
+add_executable(c_api_example example/c_api_example.cpp)
+target_link_libraries(c_api_example PRIVATE plot3d_writer_dll)
+
+
+# On Windows, copy the DLL to the same directory as the examples for easy execution
+if(WIN32)
+    add_custom_command(TARGET core_example POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:plot3d_writer_dll>
+        $<TARGET_FILE_DIR:core_example>
+    )
+    add_custom_command(TARGET c_api_example POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:plot3d_writer_dll>
+        $<TARGET_FILE_DIR:c_api_example>
+    )
+endif()
 
 # --- Installation ---
-install(TARGETS plot3d_writer plot3d_writer_dll
+set(INSTALL_TARGETS plot3d_writer_dll)
+if(ENABLE_VTK)
+    list(APPEND INSTALL_TARGETS plot3d_writer)
+endif()
+
+install(TARGETS ${INSTALL_TARGETS}
     EXPORT Plot3DWriterTargets
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-install(FILES 
-    src/Plot3dWriterCore.h 
-    src/Plot3dWriterExport.h 
-    src/Plot3dWriter.h 
+set(INSTALL_HEADERS
+    src/core/Plot3dWriterCore.h 
+    src/c_api/Plot3dWriterC.h 
+    src/c_api/Plot3dWriterExport.h
+)
+if(ENABLE_VTK)
+    list(APPEND INSTALL_HEADERS src/vtk/Plot3dWriter.h)
+endif()
+
+install(FILES ${INSTALL_HEADERS}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/plot3dwriter
 )
 
@@ -86,3 +123,17 @@ set(CPACK_PACKAGE_VENDOR "Plot3DWriter Contributors")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_GENERATOR "ZIP")
 include(CPack)
+
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+    # 定义一个来源路径（当前构建目录）和目标路径（项目根目录）
+    set(SRC_JSON "${CMAKE_BINARY_DIR}/compile_commands.json")
+    set(DST_JSON "${CMAKE_SOURCE_DIR}/compile_commands.json")
+
+    # 方法 A：在构建任何目标时，自动检查并更新根目录的 json (推荐)
+    # 缺点：必须执行一次 build (哪怕是空 build) 才会同步
+    add_custom_target(update_compile_commands ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SRC_JSON} ${DST_JSON}
+        COMMENT "Updating compile_commands.json to root folder"
+        VERBATIM
+    )
+endif()
