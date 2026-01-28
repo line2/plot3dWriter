@@ -1,0 +1,120 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "vcpkg",
+      "displayName": "VCPKG",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static"
+      }
+    },
+    {
+      "name": "ninja",
+      "displayName": "Ninja",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "vs-2022",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl"
+      }
+    },
+    {
+      "name": "msys2-ucrt",
+      "hidden": true
+    },
+    {
+      "name": "debug",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "ninja-msvc-release",
+      "inherits": [
+        "vcpkg",
+        "ninja",
+        "release",
+        "vs-2022"
+      ],
+      "binaryDir": "${sourceDir}/out/build/msvc/ninja-msvc-release",
+      "installDir": "${sourceDir}/out/install/ninja-msvc-release"
+    },
+    {
+      "name": "ninja-msvc-debug",
+      "inherits": [
+        "vcpkg",
+        "ninja",
+        "debug",
+        "vs-2022"
+      ],
+      "binaryDir": "${sourceDir}/out/build/msvc/ninja-msvc-debug",
+      "installDir": "${sourceDir}/out/install/ninja-msvc-debug"
+    },
+    {
+      "name": "ninja-msys2-ucrt-release",
+      "inherits": [
+        "vcpkg",
+        "ninja",
+        "release",
+        "msys2-ucrt"
+      ],
+      "binaryDir": "${sourceDir}/out/build/ucrt/ninja-msys2-ucrt-release",
+      "installDir": "${sourceDir}/out/install/ninja-msys2-ucrt-release"
+    },
+    {
+      "name": "ninja-msys2-ucrt-debug",
+      "inherits": [
+        "vcpkg",
+        "ninja",
+        "debug",
+        "msys2-ucrt"
+      ],
+      "binaryDir": "${sourceDir}/out/build/ucrt/ninja-msys2-ucrt-debug",
+      "installDir": "${sourceDir}/out/install/ninja-msys2-ucrt-debug"
+    },
+    {
+      "name": "Visual Studio Community 2022 Release - amd64",
+      "displayName": "Visual Studio Community 2022 Release - amd64",
+      "description": "Using compilers for Visual Studio 17 2022 (x64 architecture)",
+      "generator": "Visual Studio 17 2022",
+      "toolset": "host=x64",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "Visual Studio Community 2022 Release - amd64-debug",
+      "displayName": "Visual Studio Community 2022 Release - amd64 - Debug",
+      "configurePreset": "Visual Studio Community 2022 Release - amd64",
+      "configuration": "Debug"
+    }
+  ]
+}

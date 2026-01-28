@@ -1,0 +1,7 @@
+{
+  "name": "plot3dwriter",
+  "version": "1.0.0",
+  "dependencies": [
+    "vtk"
+  ]
+}
