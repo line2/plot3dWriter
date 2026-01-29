@@ -22,8 +22,6 @@
 #include <set>
 #include <queue>
 #include <algorithm>
-#include <fstream>
-#include <chrono>
 #include <sstream>
 
 namespace fs = std::filesystem;
@@ -38,19 +36,6 @@ struct IJK {
     }
 };
 
-static void DebugLog(const char* location, const char* message, const std::string& dataJson, const char* runId, const char* hypothesisId) {
-    auto now = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-    long long ts = now.time_since_epoch().count();
-    std::ofstream f("c:\\Users\\line2\\CLionProjects\\plot3dWriter\\.cursor\\debug.log", std::ios::app);
-    if (!f) return;
-    f << "{\"sessionId\":\"debug-session\",\"runId\":\"" << runId
-      << "\",\"hypothesisId\":\"" << hypothesisId
-      << "\",\"location\":\"" << location
-      << "\",\"message\":\"" << message
-      << "\",\"data\":" << dataJson
-      << ",\"timestamp\":" << ts << "}\n";
-}
-
 static vtkStructuredGrid* TryRebuildStructuredGridFromUnstructured(vtkUnstructuredGrid* ug) {
     if (!ug) return nullptr;
 
@@ -59,21 +44,10 @@ static vtkStructuredGrid* TryRebuildStructuredGridFromUnstructured(vtkUnstructur
 
     if (numPoints == 0 || numCells == 0) return nullptr;
 
-    // #region agent log
-    DebugLog("file_reader_c_api_example.cpp:43", "TryRebuildStructuredGridFromUnstructured enter",
-             std::string("{\"numPoints\":") + std::to_string(numPoints) + ",\"numCells\":" + std::to_string(numCells) + "}",
-             "debug-run", "H1");
-    // #endregion
-
     // 1. Basic Topology Check: All cells must be Hexahedrons or Voxels
     for (vtkIdType i = 0; i < numCells; ++i) {
         int cellType = ug->GetCellType(i);
         if (cellType != VTK_HEXAHEDRON && cellType != VTK_VOXEL) {
-            // #region agent log
-            DebugLog("file_reader_c_api_example.cpp:51", "Non-hex cell encountered",
-                     std::string("{\"cellId\":") + std::to_string(i) + ",\"cellType\":" + std::to_string(cellType) + "}",
-                     "debug-run", "H2");
-            // #endregion
             std::cerr << "Rebuild failed: Cell " << i << " is not a hexahedron/voxel." << std::endl;
             return nullptr;
         }
@@ -112,11 +86,6 @@ static vtkStructuredGrid* TryRebuildStructuredGridFromUnstructured(vtkUnstructur
     }
 
     if (startNode == -1) {
-        // #region agent log
-        DebugLog("file_reader_c_api_example.cpp:83", "No corner point found",
-                 std::string("{\"numPoints\":") + std::to_string(numPoints) + "}",
-                 "debug-run", "H3");
-        // #endregion
         std::cerr << "Rebuild failed: No corner point found (points with 3 neighbors)." << std::endl;
         return nullptr;
     }
@@ -148,11 +117,6 @@ static vtkStructuredGrid* TryRebuildStructuredGridFromUnstructured(vtkUnstructur
     };
 
     auto addEdge = [&](int localA, int localB) {
-        // #region agent log
-        DebugLog("file_reader_c_api_example.cpp:112", "Unexpected addEdge call in direction mapping",
-                 std::string("{\"localA\":") + std::to_string(localA) + ",\"localB\":" + std::to_string(localB) + "}",
-                 "debug-run", "H4");
-        // #endregion
         (void)localA;
         (void)localB;
     };
@@ -228,11 +192,6 @@ static vtkStructuredGrid* TryRebuildStructuredGridFromUnstructured(vtkUnstructur
     }
 
     if (pointToIJK.size() != numPoints) {
-        // #region agent log
-        DebugLog("file_reader_c_api_example.cpp:177", "Incomplete IJK assignment",
-                 std::string("{\"assigned\":") + std::to_string(pointToIJK.size()) + ",\"numPoints\":" + std::to_string(numPoints) + "}",
-                 "debug-run", "H5");
-        // #endregion
         std::cerr << "Rebuild failed: Could not assign IJK to all points. Grid might be non-structured." << std::endl;
         return nullptr;
     }
@@ -250,12 +209,6 @@ static vtkStructuredGrid* TryRebuildStructuredGridFromUnstructured(vtkUnstructur
     int nk = maxK - minK + 1;
 
     if ((size_t)ni * nj * nk != (size_t)numPoints) {
-        // #region agent log
-        DebugLog("file_reader_c_api_example.cpp:194", "Dimensions do not match numPoints",
-                 std::string("{\"ni\":") + std::to_string(ni) + ",\"nj\":" + std::to_string(nj) + ",\"nk\":" + std::to_string(nk) +
-                 ",\"numPoints\":" + std::to_string(numPoints) + "}",
-                 "debug-run", "H5");
-        // #endregion
         std::cerr << "Rebuild failed: ni*nj*nk (" << ni << "*" << nj << "*" << nk << "=" << ni*nj*nk 
                   << ") != numPoints (" << numPoints << ")" << std::endl;
         return nullptr;
@@ -339,12 +292,6 @@ static vtkSmartPointer<vtkDataObject> ReadFile(const std::string& filename) {
         return reader->GetOutput();
     }
 
-    // #region agent log
-    DebugLog("file_reader_c_api_example.cpp:309", "ReadFile unsupported extension",
-             std::string("{\"ext\":\"") + ext + "\"}",
-             "debug-run", "H6");
-    // #endregion
-
     return nullptr;
 }
 
@@ -365,22 +312,10 @@ static vtkStructuredGrid* ExtractStructuredGrid(vtkDataObject* obj) {
             blockTypes << "\"" << cls << "\"";
         }
         blockTypes << "]";
-        // #region agent log
-        DebugLog("file_reader_c_api_example.cpp:319", "ExtractStructuredGrid multiblock",
-                 std::string("{\"numBlocks\":") + std::to_string(mb->GetNumberOfBlocks()) +
-                 ",\"blockTypes\":" + blockTypes.str() + "}",
-                 "debug-run", "H7");
-        // #endregion
         for (unsigned int i = 0; i < mb->GetNumberOfBlocks(); ++i) {
             auto block = mb->GetBlock(i);
             if (!block) continue;
             if (auto sg = vtkStructuredGrid::SafeDownCast(block)) {
-                // #region agent log
-                DebugLog("file_reader_c_api_example.cpp:337", "ExtractStructuredGrid found block",
-                         std::string("{\"blockIndex\":") + std::to_string(i) +
-                         ",\"blockClass\":\"" + block->GetClassName() + "\"}",
-                         "debug-run", "H8");
-                // #endregion
                 return sg;
             }
             if (auto nested = vtkMultiBlockDataSet::SafeDownCast(block)) {
@@ -411,22 +346,10 @@ static vtkUnstructuredGrid* ExtractUnstructuredGrid(vtkDataObject* obj) {
             blockTypes << "\"" << cls << "\"";
         }
         blockTypes << "]";
-        // #region agent log
-        DebugLog("file_reader_c_api_example.cpp:357", "ExtractUnstructuredGrid multiblock",
-                 std::string("{\"numBlocks\":") + std::to_string(mb->GetNumberOfBlocks()) +
-                 ",\"blockTypes\":" + blockTypes.str() + "}",
-                 "debug-run", "H9");
-        // #endregion
         for (unsigned int i = 0; i < mb->GetNumberOfBlocks(); ++i) {
             auto block = mb->GetBlock(i);
             if (!block) continue;
             if (auto ug = vtkUnstructuredGrid::SafeDownCast(block)) {
-                // #region agent log
-                DebugLog("file_reader_c_api_example.cpp:367", "ExtractUnstructuredGrid found block",
-                         std::string("{\"blockIndex\":") + std::to_string(i) +
-                         ",\"blockClass\":\"" + block->GetClassName() + "\"}",
-                         "debug-run", "H9");
-                // #endregion
                 return ug;
             }
             if (auto nested = vtkMultiBlockDataSet::SafeDownCast(block)) {

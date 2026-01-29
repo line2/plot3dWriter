@@ -1,0 +1,33 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "local",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl",
+        "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "${sourceDir}/cmake/plot3d_vcpkg_vtk_compile_tools.cmake;${sourceDir}/cmake/local_compile_commands_sync.cmake"
+      },
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
+      "environment": {
+        "VCPKG_ROOT": "D:/vcpkg"
+      }
+    },
+    {
+      "name": "Debug",
+      "inherits": [
+        "ninja-msvc-debug",
+        "local"
+      ]
+    },
+    {
+      "name": "Release",
+      "inherits": [
+        "ninja-msvc-release",
+        "local"
+      ]
+    }
+  ]
+}
