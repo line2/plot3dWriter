@@ -14,7 +14,7 @@
         "ENABLE_VTK": "ON"
       },
       "environment": {
-        "VCPKG_ROOT": "D:/vcpkg"
+        "VCPKG_ROOT": "C:/path/to/vcpkg"
       }
     },
     {
