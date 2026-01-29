@@ -4,13 +4,15 @@
     {
       "name": "local",
       "hidden": true,
+      "inherits": [
+        "clangcl-ninja-base",
+        "vcpkg"
+      ],
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang-cl",
-        "CMAKE_CXX_COMPILER": "clang-cl",
-        "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "${sourceDir}/cmake/plot3d_vcpkg_vtk_compile_tools.cmake;${sourceDir}/cmake/local_compile_commands_sync.cmake"
+        "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "${sourceDir}/cmake/plot3d_vcpkg_vtk_compile_tools.cmake;${sourceDir}/cmake/local_compile_commands_sync.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+        "ENABLE_VTK": "ON"
       },
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
-      "installDir": "${sourceDir}/out/install/${presetName}",
       "environment": {
         "VCPKG_ROOT": "D:/vcpkg"
       }
@@ -18,14 +20,14 @@
     {
       "name": "Debug",
       "inherits": [
-        "ninja-msvc-debug",
+        "dbg",
         "local"
       ]
     },
     {
       "name": "Release",
       "inherits": [
-        "ninja-msvc-release",
+        "rel",
         "local"
       ]
     }

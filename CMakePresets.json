@@ -7,17 +7,21 @@
   },
   "configurePresets": [
     {
-      "name": "vcpkg",
-      "displayName": "VCPKG",
+      "name": "base",
       "hidden": true,
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_TARGET_TRIPLET": "x64-windows-static"
+        "CPACK_PACKAGE_DIRECTORY": "${sourceDir}/out/pack/${presetName}"
       }
     },
     {
+      "name": "vcpkg",
+      "hidden": true,
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+    },
+    {
       "name": "ninja",
-      "displayName": "Ninja",
       "hidden": true,
       "generator": "Ninja",
       "cacheVariables": {
@@ -25,7 +29,13 @@
       }
     },
     {
-      "name": "vs-2022",
+      "name": "msbuild",
+      "hidden": true,
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64"
+    },
+    {
+      "name": "clangcl",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang-cl",
@@ -33,78 +43,66 @@
       }
     },
     {
-      "name": "msys2-ucrt",
-      "hidden": true
+      "name": "mingw-env",
+      "hidden": true,
+      "environment": {
+        "MSYSTEM": "MINGW64"
+      }
     },
     {
-      "name": "debug",
+      "name": "ucrt-env",
+      "hidden": true,
+      "environment": {
+        "MSYSTEM": "UCRT64"
+      }
+    },
+    {
+      "name": "dbg",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
-      "name": "release",
+      "name": "rel",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
-      "name": "cpack-out",
+      "name": "mingw-base",
       "hidden": true,
-      "cacheVariables": {
-        "CPACK_PACKAGE_DIRECTORY": "${sourceDir}/out/pack/${presetName}"
-      }
-    },
-    {
-      "name": "ninja-msvc-release",
       "inherits": [
-        "vcpkg",
+        "base",
         "ninja",
-        "release",
-        "vs-2022",
-        "cpack-out"
+        "mingw-env"
       ]
     },
     {
-      "name": "ninja-msvc-debug",
+      "name": "ucrt-base",
+      "hidden": true,
       "inherits": [
-        "vcpkg",
+        "base",
         "ninja",
-        "debug",
-        "vs-2022",
-        "cpack-out"
+        "ucrt-env"
       ]
     },
     {
-      "name": "ninja-msys2-ucrt-release",
+      "name": "clangcl-ninja-base",
+      "hidden": true,
       "inherits": [
-        "vcpkg",
+        "base",
         "ninja",
-        "release",
-        "msys2-ucrt",
-        "cpack-out"
+        "clangcl"
       ]
     },
     {
-      "name": "ninja-msys2-ucrt-debug",
+      "name": "msvc-msbuild-base",
+      "hidden": true,
       "inherits": [
-        "vcpkg",
-        "ninja",
-        "debug",
-        "msys2-ucrt",
-        "cpack-out"
-      ]
-    }
-  ],
-  "buildPresets": [],
-  "packagePresets": [
-    {
-      "name": "ninja-msvc-release",
-      "configurePreset": "ninja-msvc-release",
-      "generators": [
-        "ZIP"
+        "base",
+        "msbuild"
       ]
     }
   ]
