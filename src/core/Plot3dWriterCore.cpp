@@ -70,6 +70,15 @@ public:
     }
 };
 
+template <typename RealT>
+void WriteBlockCoordinates(std::ostream& out, const plot3d_writer::StructuredBlock& block, bool useFortran, bool swap) {
+    RecordWriter rw(out, useFortran, swap);
+    size_t nPts = (size_t)block.ni * block.nj * block.nk;
+    for (size_t i = 0; i < nPts; ++i) WriteValue(out, (RealT)block.x[i], swap);
+    for (size_t i = 0; i < nPts; ++i) WriteValue(out, (RealT)block.y[i], swap);
+    for (size_t i = 0; i < nPts; ++i) WriteValue(out, (RealT)block.z[i], swap);
+}
+
 } // namespace
 
 namespace plot3d_writer {
@@ -77,7 +86,8 @@ namespace plot3d_writer {
 template <typename RealT>
 int WriteStructuredInternal(
     const std::string& filename,
-    const StructuredBlock& block,
+    const StructuredBlock* blocks,
+    int num_blocks,
     const WriteOptions& options) {
 
     std::ofstream out(filename, std::ios::binary);
@@ -89,29 +99,25 @@ int WriteStructuredInternal(
     bool swap = !IsLittleEndian();
     bool useFortran = options.useFortranFormat;
 
-    // Header record
+    // Header record: Number of blocks
     {
         RecordWriter rw(out, useFortran, swap);
-        std::int32_t nBlocks = 1;
-        WriteValue(out, nBlocks, swap);
+        WriteValue(out, (std::int32_t)num_blocks, swap);
     }
 
-    // Dimensions record
+    // Dimensions record: ni, nj, nk for each block
     {
         RecordWriter rw(out, useFortran, swap);
-        WriteValue(out, (std::int32_t)block.ni, swap);
-        WriteValue(out, (std::int32_t)block.nj, swap);
-        WriteValue(out, (std::int32_t)block.nk, swap);
+        for (int i = 0; i < num_blocks; ++i) {
+            WriteValue(out, (std::int32_t)blocks[i].ni, swap);
+            WriteValue(out, (std::int32_t)blocks[i].nj, swap);
+            WriteValue(out, (std::int32_t)blocks[i].nk, swap);
+        }
     }
 
-    // Coordinates record
-    {
-        RecordWriter rw(out, useFortran, swap);
-        size_t nPts = (size_t)block.ni * block.nj * block.nk;
-        
-        for (size_t i = 0; i < nPts; ++i) WriteValue(out, (RealT)block.x[i], swap);
-        for (size_t i = 0; i < nPts; ++i) WriteValue(out, (RealT)block.y[i], swap);
-        for (size_t i = 0; i < nPts; ++i) WriteValue(out, (RealT)block.z[i], swap);
+    // Coordinates records: x, y, z for each block
+    for (int i = 0; i < num_blocks; ++i) {
+        WriteBlockCoordinates<RealT>(out, blocks[i], useFortran, swap);
     }
 
     return 0;
@@ -173,10 +179,18 @@ int WriteStructured(
     const std::string& filename,
     const StructuredBlock& block,
     const WriteOptions& options) {
+    return WriteStructuredMulti(filename, &block, 1, options);
+}
+
+int WriteStructuredMulti(
+    const std::string& filename,
+    const StructuredBlock* blocks,
+    int num_blocks,
+    const WriteOptions& options) {
     if (options.precision == WriteOptions::Precision::Float64) {
-        return WriteStructuredInternal<double>(filename, block, options);
+        return WriteStructuredInternal<double>(filename, blocks, num_blocks, options);
     } else {
-        return WriteStructuredInternal<float>(filename, block, options);
+        return WriteStructuredInternal<float>(filename, blocks, num_blocks, options);
     }
 }
 

@@ -283,6 +283,36 @@ static vtkStructuredGrid* TryRebuildStructuredGridFromUnstructured(vtkUnstructur
 static vtkStructuredGrid* ExtractStructuredGrid(vtkDataObject* obj);
 static vtkUnstructuredGrid* ExtractUnstructuredGrid(vtkDataObject* obj);
 
+static void CollectStructuredGrids(vtkDataObject* obj, std::vector<vtkSmartPointer<vtkStructuredGrid>>& grids) {
+    if (!obj) return;
+
+    if (auto sg = vtkStructuredGrid::SafeDownCast(obj)) {
+        grids.push_back(sg);
+        return;
+    }
+
+    if (auto mb = vtkMultiBlockDataSet::SafeDownCast(obj)) {
+        for (unsigned int i = 0; i < mb->GetNumberOfBlocks(); ++i) {
+            CollectStructuredGrids(mb->GetBlock(i), grids);
+        }
+    }
+}
+
+static void CollectUnstructuredGrids(vtkDataObject* obj, std::vector<vtkSmartPointer<vtkUnstructuredGrid>>& grids) {
+    if (!obj) return;
+
+    if (auto ug = vtkUnstructuredGrid::SafeDownCast(obj)) {
+        grids.push_back(ug);
+        return;
+    }
+
+    if (auto mb = vtkMultiBlockDataSet::SafeDownCast(obj)) {
+        for (unsigned int i = 0; i < mb->GetNumberOfBlocks(); ++i) {
+            CollectUnstructuredGrids(mb->GetBlock(i), grids);
+        }
+    }
+}
+
 static vtkSmartPointer<vtkDataObject> ReadFile(const std::string& filename) {
     std::string ext = fs::path(filename).extension().string();
     for (auto& c : ext) c = std::tolower(c);
@@ -306,16 +336,7 @@ static vtkSmartPointer<vtkDataObject> ReadFile(const std::string& filename) {
         auto reader = vtkSmartPointer<vtkCGNSReader>::New();
         reader->SetFileName(filename.c_str());
         reader->Update();
-        vtkDataObject* output = reader->GetOutput();
-        if (auto mb = vtkMultiBlockDataSet::SafeDownCast(output)) {
-            if (auto sg = ExtractStructuredGrid(mb)) {
-                return sg;
-            }
-            if (auto ug = ExtractUnstructuredGrid(mb)) {
-                return ug;
-            }
-        }
-        return output;
+        return reader->GetOutput();
     }
 
     // #region agent log
@@ -434,93 +455,82 @@ int main(int argc, char* argv[]) {
         std::cerr << "Error: Could not read file or unsupported format: " << inputFile << std::endl;
         return EXIT_FAILURE;
     }
-    // #region agent log
-    DebugLog("file_reader_c_api_example.cpp:396", "ReadFile output type",
-             std::string("{\"class\":\"") + dataObj->GetClassName() + "\"}",
-             "debug-run", "H10");
-    // #endregion
 
-    // Check if it's a structured grid
-    vtkStructuredGrid* sg = ExtractStructuredGrid(dataObj);
+    std::vector<vtkSmartPointer<vtkStructuredGrid>> structuredGrids;
+    CollectStructuredGrids(dataObj, structuredGrids);
+
     bool wasRebuilt = false;
+    std::vector<vtkSmartPointer<vtkStructuredGrid>> rebuiltGrids;
 
-    if (!sg) {
-        if (auto ug = ExtractUnstructuredGrid(dataObj)) {
-            std::cout << "Input is an Unstructured Grid. Attempting to rebuild structured topology..." << std::endl;
-            sg = TryRebuildStructuredGridFromUnstructured(ug);
-            if (sg) {
-                std::cout << "Successfully rebuilt structured topology from unstructured grid!" << std::endl;
-                wasRebuilt = true;
-            } else {
-                std::cerr << "Error: Input file contains an Unstructured Grid that could not be rebuilt as a Structured Grid." << std::endl;
-                std::cerr << "Plot3D only supports Structured Grids. Please provide a Structured Grid or resample your data." << std::endl;
-                return EXIT_FAILURE;
+    if (structuredGrids.empty()) {
+        std::vector<vtkSmartPointer<vtkUnstructuredGrid>> unstructuredGrids;
+        CollectUnstructuredGrids(dataObj, unstructuredGrids);
+        
+        if (!unstructuredGrids.empty()) {
+            std::cout << "No structured grids found. Attempting to rebuild from " << unstructuredGrids.size() << " unstructured grids..." << std::endl;
+            for (auto& ug : unstructuredGrids) {
+                if (auto sg = TryRebuildStructuredGridFromUnstructured(ug)) {
+                    rebuiltGrids.push_back(vtkSmartPointer<vtkStructuredGrid>::Take(sg));
+                }
             }
-        } else {
-            std::cerr << "Error: Input file does not contain a supported Structured Grid or a rebuildable Unstructured Grid." << std::endl;
-            return EXIT_FAILURE;
+            if (!rebuiltGrids.empty()) {
+                std::cout << "Successfully rebuilt " << rebuiltGrids.size() << " structured grids!" << std::endl;
+                structuredGrids = rebuiltGrids;
+                wasRebuilt = true;
+            }
         }
     }
 
-    int dims[3];
-    sg->GetDimensions(dims);
-    std::cout << "Structured Grid dimensions: " << dims[0] << " x " << dims[1] << " x " << dims[2] << std::endl;
-
-    size_t nPts = (size_t)dims[0] * dims[1] * dims[2];
-    std::vector<double> x(nPts), y(nPts), z(nPts);
-
-    for (size_t i = 0; i < nPts; ++i) {
-        double p[3];
-        sg->GetPoint(static_cast<vtkIdType>(i), p);
-        x[i] = p[0];
-        y[i] = p[1];
-        z[i] = p[2];
-    }
-
-    // 1) Prepare the C-style block structure
-    Plot3dStructuredBlock block;
-    block.ni = dims[0];
-    block.nj = dims[1];
-    block.nk = dims[2];
-    block.x = x.data();
-    block.y = y.data();
-    block.z = z.data();
-
-    Plot3dWriteOptions opt;
-    opt.precision = 1;          // 0: float32, 1: float64
-    opt.useFortranFormat = 0;   // 0: raw binary, 1: fortran unformatted
-
-    // 2) Write grid (.xyz) using C API
-    std::string outputGrid = "converted_grid.xyz";
-    if (plot3d_write_structured(outputGrid.c_str(), &block, &opt) != 0) {
-        std::cerr << "Error: plot3d_write_structured failed: " << plot3d_get_last_error() << std::endl;
+    if (structuredGrids.empty()) {
+        std::cerr << "Error: No supported structured grids found in the input file." << std::endl;
         return EXIT_FAILURE;
     }
 
-    std::cout << "Successfully wrote " << outputGrid << " (C API)" << std::endl;
+    std::cout << "Found " << structuredGrids.size() << " structured blocks." << std::endl;
 
-    // 3) Optionally write solution if arrays exist
-    auto pd = sg->GetPointData();
-    if (pd->GetNumberOfArrays() > 0) {
-        // For demonstration, we'll try to find some common arrays or just use the first one as Density
-        // In a real application, you'd map VTK arrays to Plot3D variables (rho, rhou, rhov, rhow, E)
-        std::cout << "Found " << pd->GetNumberOfArrays() << " point data arrays. Solution writing could be implemented here." << std::endl;
-        
-        // Example of how you might write a single-variable solution if it were density
-        /*
-        vtkDataArray* densityArr = pd->GetArray(0);
-        if (densityArr) {
-            std::vector<double> q(nPts);
-            for(size_t i = 0; i < nPts; ++i) q[i] = densityArr->GetComponent(i, 0);
-            Plot3dReferenceConditions ref = {0.5f, 0.0f, 1e6f, 0.0f};
-            plot3d_write_solution("converted_solution.q", &block, q.data(), 1, &ref, &opt);
+    std::vector<Plot3dStructuredBlock> blocks(structuredGrids.size());
+    std::vector<std::vector<double>> x_data(structuredGrids.size());
+    std::vector<std::vector<double>> y_data(structuredGrids.size());
+    std::vector<std::vector<double>> z_data(structuredGrids.size());
+
+    for (size_t b = 0; b < structuredGrids.size(); ++b) {
+        auto& sg = structuredGrids[b];
+        int dims[3];
+        sg->GetDimensions(dims);
+        std::cout << "Block " << b << " dimensions: " << dims[0] << " x " << dims[1] << " x " << dims[2] << std::endl;
+
+        size_t nPts = (size_t)dims[0] * dims[1] * dims[2];
+        x_data[b].resize(nPts);
+        y_data[b].resize(nPts);
+        z_data[b].resize(nPts);
+
+        for (size_t i = 0; i < nPts; ++i) {
+            double p[3];
+            sg->GetPoint(static_cast<vtkIdType>(i), p);
+            x_data[b][i] = p[0];
+            y_data[b][i] = p[1];
+            z_data[b][i] = p[2];
         }
-        */
+
+        blocks[b].ni = dims[0];
+        blocks[b].nj = dims[1];
+        blocks[b].nk = dims[2];
+        blocks[b].x = x_data[b].data();
+        blocks[b].y = y_data[b].data();
+        blocks[b].z = z_data[b].data();
     }
 
-    if (wasRebuilt) {
-        sg->Delete();
+    Plot3dWriteOptions opt;
+    opt.precision = 1;          // 0: float32, 1: float64
+    opt.useFortranFormat = 1;   // 0: raw binary, 1: fortran unformatted
+
+    std::string outputGrid = "converted_grid_multi.xyz";
+    if (plot3d_write_structured_multi(outputGrid.c_str(), blocks.data(), static_cast<int>(blocks.size()), &opt) != 0) {
+        std::cerr << "Error: plot3d_write_structured_multi failed: " << plot3d_get_last_error() << std::endl;
+        return EXIT_FAILURE;
     }
+
+    std::cout << "Successfully wrote " << outputGrid << " with " << blocks.size() << " blocks (C API)" << std::endl;
 
     return EXIT_SUCCESS;
 }

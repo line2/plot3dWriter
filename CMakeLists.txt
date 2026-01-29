@@ -60,14 +60,24 @@ if(ENABLE_VTK)
 endif()
 
 # --- Examples ---
+add_executable(multi_block_example example/multi_block_example.cpp)
+target_link_libraries(multi_block_example PRIVATE plot3d_writer_dll)
+
 if(ENABLE_VTK)
     add_executable(file_reader_c_api_example example/file_reader_c_api_example.cpp)
     target_link_libraries(file_reader_c_api_example PRIVATE plot3d_writer_dll ${VTK_LIBRARIES})
+    target_include_directories(file_reader_c_api_example PRIVATE ${VTK_INCLUDE_DIRS})
 endif()
+
 
 
 # On Windows, copy the DLL to the same directory as the examples for easy execution
 if(WIN32)
+    add_custom_command(TARGET multi_block_example POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:plot3d_writer_dll>
+        $<TARGET_FILE_DIR:multi_block_example>
+    )
     if(ENABLE_VTK)
         add_custom_command(TARGET file_reader_c_api_example POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different

@@ -13,6 +13,12 @@ PLOT3D_WRITER_API int plot3d_write_structured(
     const Plot3dStructuredBlock* block,
     const Plot3dWriteOptions* options);
 
+PLOT3D_WRITER_API int plot3d_write_structured_multi(
+    const char* filename,
+    const Plot3dStructuredBlock* blocks,
+    int num_blocks,
+    const Plot3dWriteOptions* options);
+
 PLOT3D_WRITER_API int plot3d_write_solution(
     const char* filename,
     const Plot3dStructuredBlock* block,

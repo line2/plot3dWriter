@@ -30,6 +30,12 @@ PLOT3D_WRITER_API int WriteStructured(
     const StructuredBlock& block,
     const WriteOptions& options = {});
 
+PLOT3D_WRITER_API int WriteStructuredMulti(
+    const std::string& filename,
+    const StructuredBlock* blocks,
+    int num_blocks,
+    const WriteOptions& options = {});
+
 PLOT3D_WRITER_API int WriteSolution(
     const std::string& filename,
     const StructuredBlock& block,
