@@ -7,6 +7,22 @@ include(CMakePackageConfigHelpers)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Match MSVC runtime to common VTK static builds on Windows.
+if(MSVC)
+    option(PLOT3D_USE_STATIC_MSVC_RUNTIME "Use /MT runtime on MSVC" ON)
+    if(PLOT3D_USE_STATIC_MSVC_RUNTIME)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY
+            "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+            CACHE STRING "MSVC runtime library" FORCE
+        )
+    else()
+        set(CMAKE_MSVC_RUNTIME_LIBRARY
+            "MultiThreadedDLL$<$<CONFIG:Debug>:Debug>"
+            CACHE STRING "MSVC runtime library" FORCE
+        )
+    endif()
+endif()
+
 # --- Find Dependencies ---
 option(ENABLE_VTK "Enable VTK integration layer" ON)
 if(ENABLE_VTK)
@@ -44,25 +60,21 @@ if(ENABLE_VTK)
 endif()
 
 # --- Examples ---
-add_executable(core_example example/core_example.cpp)
-target_link_libraries(core_example PRIVATE plot3d_writer_dll)
-
-add_executable(c_api_example example/c_api_example.cpp)
-target_link_libraries(c_api_example PRIVATE plot3d_writer_dll)
+if(ENABLE_VTK)
+    add_executable(file_reader_c_api_example example/file_reader_c_api_example.cpp)
+    target_link_libraries(file_reader_c_api_example PRIVATE plot3d_writer_dll ${VTK_LIBRARIES})
+endif()
 
 
 # On Windows, copy the DLL to the same directory as the examples for easy execution
 if(WIN32)
-    add_custom_command(TARGET core_example POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:plot3d_writer_dll>
-        $<TARGET_FILE_DIR:core_example>
-    )
-    add_custom_command(TARGET c_api_example POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:plot3d_writer_dll>
-        $<TARGET_FILE_DIR:c_api_example>
-    )
+    if(ENABLE_VTK)
+        add_custom_command(TARGET file_reader_c_api_example POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:plot3d_writer_dll>
+            $<TARGET_FILE_DIR:file_reader_c_api_example>
+        )
+    endif()
 endif()
 
 # --- Installation ---
@@ -77,6 +89,12 @@ install(TARGETS ${INSTALL_TARGETS}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
+
+if(ENABLE_VTK)
+    install(TARGETS file_reader_c_api_example
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
 
 set(INSTALL_HEADERS
     src/core/Plot3dWriterCore.h 

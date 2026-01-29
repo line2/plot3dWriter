@@ -24,7 +24,7 @@ The project is organized into three main layers:
 ### Choosing an API
 
 1. **Modern C++**: Use `src/core/Plot3dWriterCore.h` for direct file writing.
-2. **C Projects**: Use `src/c_api/Plot3dWriterCore.h` (C API functions).
+2. **C Projects**: Use `src/c_api/Plot3dWriterC.h` (C API functions).
 3. **VTK Projects**: Use `src/vtk/Plot3dWriter.h` to write VTK data objects directly.
 
 ### Building
@@ -40,3 +40,4 @@ cmake --build --preset=ninja-msvc-release
 
 - `example/core_example.cpp`: Demonstrates using the C++ Core API.
 - `example/c_api_example.cpp`: Demonstrates using the C API.
+- `example/file_reader_c_api_example.cpp`: Demonstrates reading external mesh files (.vts, .vtk, .vtu, .cgns) using VTK and converting them to Plot3D using the C API.
